@@ -1,6 +1,6 @@
 import { stateManager } from '../state.js';
 
-const OPENROUTER_API_KEY = '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';
+const OPENROUTER_API_KEY = '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';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 let chatHistory = [];
@@ -390,10 +390,16 @@ export function toggleChatbotVisibility(shouldHide) {
 
 // Kiểm tra xem có đang làm bài không
 export function checkIfTakingExam() {
-  // Kiểm tra class exam-taking-container
+  // Kiểm tra class exam-taking-container (đang làm bài)
   const examContainer = document.querySelector('.exam-taking-container');
   if (examContainer) {
     return true;
+  }
+  
+  // KHÔNG kiểm tra exam-results-container vì đó là trang kết quả, không phải đang làm bài
+  const resultsContainer = document.querySelector('.exam-results-container');
+  if (resultsContainer) {
+    return false; // Trang kết quả không phải đang làm bài
   }
   
   // Kiểm tra modal làm bài (nếu có)

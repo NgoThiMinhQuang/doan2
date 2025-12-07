@@ -191,12 +191,17 @@ export function initApp() {
   });
   
   // Sử dụng MutationObserver để theo dõi thay đổi DOM khi làm bài
+  let checkTimeout;
   const observer = new MutationObserver(() => {
-    if (checkIfTakingExam()) {
-      toggleChatbotVisibility(true);
-    } else {
-      toggleChatbotVisibility(false);
-    }
+    // Debounce để tránh chạy quá thường xuyên
+    clearTimeout(checkTimeout);
+    checkTimeout = setTimeout(() => {
+      if (checkIfTakingExam()) {
+        toggleChatbotVisibility(true);
+      } else {
+        toggleChatbotVisibility(false);
+      }
+    }, 100);
   });
   
   // Bắt đầu quan sát thay đổi trong body

@@ -31,14 +31,14 @@ export function renderStudentExams() {
       
       <div class="exams-tabs">
         <button class="tab-btn active" data-tab="official">
-          Kỳ thi chính thức
+          Bài kiểm tra
         </button>
         <button class="tab-btn" data-tab="practice">
           Quiz ôn tập
         </button>
       </div>
   
-      <!-- Tab: Kỳ thi chính thức -->
+      <!-- Tab: Bài kiểm tra -->
       <div id="official-exams-tab" class="tab-content active">
         <div class="exams-list">
         ${myExams.filter(e => e.examType === 'official' || !e.examType).length > 0 ? 
@@ -75,9 +75,9 @@ export function renderStudentExams() {
             `;
           }).join('') : 
           `<div class="empty-state">
-            <div class="empty-icon">🏁</div>
-            <h3>Chưa có kỳ thi chính thức nào</h3>
-            <p>Hiện tại chưa có kỳ thi chính thức nào được tạo. Hãy kiểm tra lại sau!</p>
+            <div class="empty-icon">📝</div>
+            <h3>Chưa có bài kiểm tra nào</h3>
+            <p>Hiện tại chưa có bài kiểm tra nào được tạo. Hãy kiểm tra lại sau!</p>
           </div>`
         }
         </div>
@@ -339,12 +339,22 @@ export function renderStudentExams() {
     // Exit exam
     exitBtn.addEventListener('click', () => {
       if (confirm('Bạn có chắc chắn muốn thoát? Kết quả sẽ không được lưu.')) {
-        // Hiện lại chatbot khi thoát
-        import('../components/Chatbot.js').then(({ toggleChatbotVisibility }) => {
-          toggleChatbotVisibility(false);
-        });
+        // Xóa container trước
+        const examContainer = document.querySelector('.exam-taking-container');
+        if (examContainer) {
+          examContainer.remove();
+        }
+        
+        // Navigate trước
         const currentRoute = stateManager.getState().currentRoute;
         navigateTo('/student/exams');
+        
+        // Hiện lại chatbot sau khi DOM đã được cập nhật
+        setTimeout(() => {
+          import('../components/Chatbot.js').then(({ toggleChatbotVisibility }) => {
+            toggleChatbotVisibility(false);
+          });
+        }, 200);
       }
     });
     
@@ -450,10 +460,7 @@ export function renderStudentExams() {
       
       <div class="results-summary">
         <div class="score-card">
-          <div class="score-main">
-            <span class="score-number">${result.totalScore}</span>
-            <span class="score-max">/${result.maxScore}</span>
-          </div>
+          <div class="score-max-label">/${result.maxScore}</div>
           <div class="score-percentage">${result.percentage.toFixed(1)}%</div>
           <div class="score-grade" style="color: ${gradeColor}">${grade}</div>
         </div>
@@ -515,6 +522,12 @@ export function renderStudentExams() {
       </div>
     `;
     
+    // Xóa exam-taking-container trước
+    const examContainer = document.querySelector('.exam-taking-container');
+    if (examContainer) {
+      examContainer.remove();
+    }
+    
     // Replace current content with results
     const mainContent = document.querySelector('.content');
     if (mainContent) {
@@ -524,9 +537,14 @@ export function renderStudentExams() {
       console.error('Could not find main content area for results');
     }
     
-    // Hiện lại chatbot sau khi nộp bài
-    import('../components/Chatbot.js').then(({ toggleChatbotVisibility }) => {
-      toggleChatbotVisibility(false);
+    // Hiện lại chatbot ngay sau khi DOM đã được cập nhật
+    // Sử dụng requestAnimationFrame để đảm bảo DOM đã render xong
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        import('../components/Chatbot.js').then(({ toggleChatbotVisibility }) => {
+          toggleChatbotVisibility(false);
+        });
+      }, 100);
     });
     
     // Setup results event listeners
