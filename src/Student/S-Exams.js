@@ -283,6 +283,11 @@ export function renderStudentExams() {
       console.error('Could not find main content area');
     }
     
+    // Ẩn chatbot khi đang làm bài
+    import('../components/Chatbot.js').then(({ toggleChatbotVisibility }) => {
+      toggleChatbotVisibility(true);
+    });
+    
     // Setup exam taking event listeners
     setupExamTakingListeners(exam);
   }
@@ -334,6 +339,10 @@ export function renderStudentExams() {
     // Exit exam
     exitBtn.addEventListener('click', () => {
       if (confirm('Bạn có chắc chắn muốn thoát? Kết quả sẽ không được lưu.')) {
+        // Hiện lại chatbot khi thoát
+        import('../components/Chatbot.js').then(({ toggleChatbotVisibility }) => {
+          toggleChatbotVisibility(false);
+        });
         const currentRoute = stateManager.getState().currentRoute;
         navigateTo('/student/exams');
       }
@@ -514,6 +523,11 @@ export function renderStudentExams() {
     } else {
       console.error('Could not find main content area for results');
     }
+    
+    // Hiện lại chatbot sau khi nộp bài
+    import('../components/Chatbot.js').then(({ toggleChatbotVisibility }) => {
+      toggleChatbotVisibility(false);
+    });
     
     // Setup results event listeners
     document.getElementById('view-exams').addEventListener('click', () => {

@@ -41,6 +41,9 @@ import { renderCourseDetails } from './CourseDetails.js';
 // Import trang chủ
 import { renderTrangChu } from './TrangChu.js';
 
+// Import chatbot
+import { initChatbot } from './components/Chatbot.js';
+
 // Import utilities and charts
 import {
   addToStorage,
@@ -164,9 +167,44 @@ export function initApp() {
   // Initial render
   renderApp();
 
+  // Initialize chatbot widget
+  if (isAuthenticated()) {
+    initChatbot();
+  }
+
   // Subscribe to state changes
   stateManager.subscribe(() => {
     renderApp();
+    // Re-initialize chatbot if authenticated
+    if (isAuthenticated() && !document.getElementById('chatbot-widget')) {
+      initChatbot();
+    }
+    
+    // Kiểm tra và ẩn chatbot khi đang làm bài
+    setTimeout(() => {
+      if (checkIfTakingExam()) {
+        toggleChatbotVisibility(true);
+      } else {
+        toggleChatbotVisibility(false);
+      }
+    }, 100);
+  });
+  
+  // Sử dụng MutationObserver để theo dõi thay đổi DOM khi làm bài
+  const observer = new MutationObserver(() => {
+    if (checkIfTakingExam()) {
+      toggleChatbotVisibility(true);
+    } else {
+      toggleChatbotVisibility(false);
+    }
+  });
+  
+  // Bắt đầu quan sát thay đổi trong body
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['style', 'class']
   });
 
   // Make renderApp available globally for routing

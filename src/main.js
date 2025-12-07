@@ -26,6 +26,8 @@ import './styles/CourseDetails.css';
 import './styles/Charts.css';
 // Import Modal.css to override other modal styles
 import './styles/Modal.css';
+// Import Chatbot.css
+import './styles/Chatbot.css';
 // Import TrangChu.css LAST to ensure landing page styles override everything
 import './styles/TrangChu.css';
 import { initApp } from './app.js';
