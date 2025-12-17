@@ -204,20 +204,65 @@ export function renderTeacherGrading() {
             const course = courses.find(c => c.id === result.courseId);
             
             return `
-              <div class="submission-card" data-result-id="${result.id}" data-type="exam">
-                <div class="submission-header">
-                  <h4>🏁 ${exam ? exam.title : 'N/A'}</h4>
-                  <span class="submission-status pending">⏳ Chưa chấm</span>
+              <div class="exam-card-grading" data-result-id="${result.id}" data-type="exam">
+                <div class="exam-card-header">
+                  <div class="exam-card-icon-wrapper">
+                    <div class="exam-card-icon pending-icon">⏳</div>
+                  </div>
+                  <div class="exam-card-title-section">
+                    <h4 class="exam-card-title">${exam ? exam.title : 'N/A'}</h4>
+                    <span class="exam-status-badge pending-badge">Chưa chấm</span>
+                  </div>
                 </div>
-                <div class="submission-info">
-                  <p><strong>👤 Học sinh:</strong> ${student ? student.fullName : 'N/A'}</p>
-                  <p><strong>📚 Khóa học:</strong> ${course ? course.title : 'N/A'}</p>
-                  <p><strong>⏰ Nộp lúc:</strong> ${new Date(result.submittedAt).toLocaleString('vi-VN')}</p>
-                  <p><strong>📊 Điểm tự động:</strong> ${result.totalScore}/${result.maxScore} (${result.percentage?.toFixed(1) || 0}%)</p>
+                <div class="exam-card-body">
+                  <div class="exam-info-item">
+                    <svg class="exam-info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span class="exam-info-label">Học sinh:</span>
+                    <span class="exam-info-value">${student ? student.fullName : 'N/A'}</span>
+                  </div>
+                  <div class="exam-info-item">
+                    <svg class="exam-info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg>
+                    <span class="exam-info-label">Khóa học:</span>
+                    <span class="exam-info-value">${course ? course.title : 'N/A'}</span>
+                  </div>
+                  <div class="exam-info-item">
+                    <svg class="exam-info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span class="exam-info-label">Nộp lúc:</span>
+                    <span class="exam-info-value">${new Date(result.submittedAt).toLocaleString('vi-VN')}</span>
+                  </div>
+                  <div class="exam-info-item highlight">
+                    <svg class="exam-info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="20" x2="12" y2="4"></line>
+                      <polyline points="6 10 12 4 18 10"></polyline>
+                    </svg>
+                    <span class="exam-info-label">Điểm tự động:</span>
+                    <span class="exam-info-value score-value">${result.totalScore}/${result.maxScore} <span class="percentage">(${result.percentage?.toFixed(1) || 0}%)</span></span>
+                  </div>
                 </div>
-                <div class="submission-actions">
-                  <button class="btn btn-sm btn-primary btn-grade-exam" data-result-id="${result.id}">✏️ Chấm điểm</button>
-                  <button class="btn btn-sm btn-outline btn-view-exam" data-result-id="${result.id}">👁️ Xem chi tiết</button>
+                <div class="exam-card-actions">
+                  <button class="exam-action-btn primary-btn btn-grade-exam" data-result-id="${result.id}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    <span>Chấm điểm</span>
+                  </button>
+                  <button class="exam-action-btn outline-btn btn-view-exam" data-result-id="${result.id}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <span>Xem chi tiết</span>
+                  </button>
                 </div>
               </div>
             `;
@@ -231,21 +276,73 @@ export function renderTeacherGrading() {
             const course = courses.find(c => c.id === result.courseId);
             
             return `
-              <div class="submission-card graded" data-result-id="${result.id}" data-type="exam">
-                <div class="submission-header">
-                  <h4>✓ ${exam ? exam.title : 'N/A'}</h4>
-                  <span class="submission-status graded">✓ Đã chấm: ${result.teacherGrade}/10</span>
+              <div class="exam-card-grading graded" data-result-id="${result.id}" data-type="exam">
+                <div class="exam-card-header">
+                  <div class="exam-card-icon-wrapper">
+                    <div class="exam-card-icon graded-icon">✓</div>
+                  </div>
+                  <div class="exam-card-title-section">
+                    <h4 class="exam-card-title">${exam ? exam.title : 'N/A'}</h4>
+                    <span class="exam-status-badge graded-badge">Đã chấm: ${result.teacherGrade}/10</span>
+                  </div>
                 </div>
-                <div class="submission-info">
-                  <p><strong>👤 Học sinh:</strong> ${student ? student.fullName : 'N/A'}</p>
-                  <p><strong>📚 Khóa học:</strong> ${course ? course.title : 'N/A'}</p>
-                  <p><strong>⏰ Nộp lúc:</strong> ${new Date(result.submittedAt).toLocaleString('vi-VN')}</p>
-                  <p><strong>📊 Điểm tự động:</strong> ${result.totalScore}/${result.maxScore} (${result.percentage?.toFixed(1) || 0}%)</p>
-                  <p><strong>✏️ Chấm lúc:</strong> ${result.teacherGradedAt ? new Date(result.teacherGradedAt).toLocaleString('vi-VN') : 'N/A'}</p>
+                <div class="exam-card-body">
+                  <div class="exam-info-item">
+                    <svg class="exam-info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span class="exam-info-label">Học sinh:</span>
+                    <span class="exam-info-value">${student ? student.fullName : 'N/A'}</span>
+                  </div>
+                  <div class="exam-info-item">
+                    <svg class="exam-info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg>
+                    <span class="exam-info-label">Khóa học:</span>
+                    <span class="exam-info-value">${course ? course.title : 'N/A'}</span>
+                  </div>
+                  <div class="exam-info-item">
+                    <svg class="exam-info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span class="exam-info-label">Nộp lúc:</span>
+                    <span class="exam-info-value">${new Date(result.submittedAt).toLocaleString('vi-VN')}</span>
+                  </div>
+                  <div class="exam-info-item highlight">
+                    <svg class="exam-info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="12" y1="20" x2="12" y2="4"></line>
+                      <polyline points="6 10 12 4 18 10"></polyline>
+                    </svg>
+                    <span class="exam-info-label">Điểm tự động:</span>
+                    <span class="exam-info-value score-value">${result.totalScore}/${result.maxScore} <span class="percentage">(${result.percentage?.toFixed(1) || 0}%)</span></span>
+                  </div>
+                  <div class="exam-info-item">
+                    <svg class="exam-info-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    <span class="exam-info-label">Chấm lúc:</span>
+                    <span class="exam-info-value">${result.teacherGradedAt ? new Date(result.teacherGradedAt).toLocaleString('vi-VN') : 'N/A'}</span>
+                  </div>
                 </div>
-                <div class="submission-actions">
-                  <button class="btn btn-sm btn-warning btn-edit-exam-grade" data-result-id="${result.id}">📝 Sửa điểm</button>
-                  <button class="btn btn-sm btn-outline btn-view-exam" data-result-id="${result.id}">👁️ Xem chi tiết</button>
+                <div class="exam-card-actions">
+                  <button class="exam-action-btn warning-btn btn-edit-exam-grade" data-result-id="${result.id}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    <span>Sửa điểm</span>
+                  </button>
+                  <button class="exam-action-btn outline-btn btn-view-exam" data-result-id="${result.id}">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <span>Xem chi tiết</span>
+                  </button>
                 </div>
               </div>
             `;
@@ -362,8 +459,23 @@ export function renderTeacherGrading() {
     const submissionLists = container.querySelectorAll('.submissions-list');
     
     submissionLists.forEach(list => {
-      // Phần đã chấm luôn hiển thị 3 ô mỗi hàng
-      const isGradedList = list.id === 'assignment-graded-list' || list.id === 'exam-graded-list';
+      // Phần bài kiểm tra (cả chưa chấm và đã chấm) luôn hiển thị 3 ô mỗi hàng
+      const isExamList = list.id === 'exam-pending-list' || list.id === 'exam-graded-list';
+      
+      if (isExamList) {
+        // Loại bỏ tất cả các class layout
+        list.classList.remove('single-card', 'double-card', 'triple-card');
+        // Đảm bảo style inline luôn là 3 cột với !important
+        list.style.setProperty('grid-template-columns', 'repeat(3, 1fr)', 'important');
+        list.style.setProperty('width', '100%', 'important');
+        list.style.setProperty('max-width', '100%', 'important');
+        list.style.setProperty('justify-items', 'start', 'important');
+        list.style.setProperty('justify-content', 'start', 'important');
+        return;
+      }
+      
+      // Phần đã chấm bài tập luôn hiển thị 3 ô mỗi hàng
+      const isGradedList = list.id === 'assignment-graded-list';
       
       if (isGradedList) {
         // Loại bỏ tất cả các class layout
@@ -372,11 +484,12 @@ export function renderTeacherGrading() {
         list.style.setProperty('grid-template-columns', 'repeat(3, 1fr)', 'important');
         list.style.setProperty('width', '100%', 'important');
         list.style.setProperty('max-width', '100%', 'important');
-        list.style.setProperty('justify-content', 'stretch', 'important');
+        list.style.setProperty('justify-items', 'start', 'important');
+        list.style.setProperty('justify-content', 'start', 'important');
         return;
       }
       
-      // Phần chưa chấm - luôn xử lý để đảm bảo layout đúng
+      // Phần chưa chấm bài tập - xử lý theo số lượng card
       // Count cards (đếm cả khi ẩn)
       const cards = list.querySelectorAll('.submission-card-grading');
       const cardCount = cards.length;
