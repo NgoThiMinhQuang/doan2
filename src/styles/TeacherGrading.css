@@ -621,16 +621,51 @@
   }
 
   .exam-card-header {
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
-    margin-bottom: 20px;
-    padding-bottom: 16px;
-    border-bottom: 2px solid #f0f2f5;
+    margin-bottom: 18px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid #f0f2f5;
   }
 
-  .exam-card-icon-wrapper {
-    flex-shrink: 0;
+  .exam-header-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+  }
+
+  .exam-status-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+    position: relative;
+  }
+
+  .exam-status-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke-width: 3;
+  }
+
+  .exam-status-icon.graded {
+    background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+    color: white;
+  }
+
+  .exam-status-icon.pending {
+    background: linear-gradient(135deg, #ffd89b 0%, #ffb347 100%);
+    color: white;
+  }
+
+  .exam-item-number {
+    font-size: 36px;
+    font-weight: 800;
+    color: #2c3e50;
+    line-height: 1;
   }
 
   .exam-card-icon {
@@ -671,25 +706,28 @@
 
   .exam-status-badge {
     display: inline-block;
-    padding: 6px 14px;
+    padding: 8px 16px;
     border-radius: 20px;
     font-size: 12px;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     white-space: nowrap;
+    width: fit-content;
   }
 
   .exam-status-badge.pending-badge {
     background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
     color: #856404;
-    box-shadow: 0 2px 8px rgba(255, 243, 205, 0.4);
+    box-shadow: 0 2px 8px rgba(255, 243, 205, 0.3);
+    border: 1px solid rgba(255, 193, 7, 0.2);
   }
 
   .exam-status-badge.graded-badge {
     background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
     color: #155724;
-    box-shadow: 0 2px 8px rgba(212, 237, 218, 0.4);
+    box-shadow: 0 2px 8px rgba(67, 233, 123, 0.25);
+    border: 1px solid rgba(40, 167, 69, 0.2);
   }
 
   .exam-card-body {
