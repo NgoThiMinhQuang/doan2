@@ -11,7 +11,13 @@ import {
 } from '../utils.js';
 
 export function renderTeacherExams() {
+    // Kiểm tra quyền truy cập
     const currentUser = stateManager.getState().user;
+    if (!currentUser || currentUser.role !== 'teacher') {
+      navigateTo('/dashboard');
+      return document.createElement('div');
+    }
+    
     const exams = getFromStorage(STORAGE_KEYS.EXAMS);
     const courses = getFromStorage(STORAGE_KEYS.COURSES);
   
@@ -19,12 +25,11 @@ export function renderTeacherExams() {
     let teacherExams = exams.filter(exam => exam.teacherId === currentUser.id);
     const teacherCourses = courses.filter(course => course.teacherId === currentUser.id);
     
-    // Chuyển tất cả exam có examType === 'official' hoặc không có examType sang 'practice'
+    // Đảm bảo tất cả exam đều có examType (mặc định là 'official' nếu không có)
     let hasChanges = false;
     teacherExams.forEach(exam => {
-      if (!exam.examType || exam.examType === 'official') {
-        exam.examType = 'practice';
-        exam.maxAttempts = -1; // Không giới hạn cho quiz ôn tập
+      if (!exam.examType) {
+        exam.examType = 'official'; // Mặc định là bài kiểm tra
         hasChanges = true;
       }
     });
@@ -255,24 +260,34 @@ export function renderTeacherExams() {
       
       <!-- Modal tạo/chỉnh sửa kỳ thi -->
       <div id="teacher-exam-modal" class="modal" style="display: none;">
-        <div class="modal-content large-modal">
-          <div class="modal-header">
-            <h3 id="teacher-exam-modal-title">Tạo kỳ thi trắc nghiệm mới</h3>
-            <button class="modal-close">&times;</button>
+        <div class="modal-content exam-modal-content">
+          <div class="modal-header exam-modal-header">
+            <h3 id="teacher-exam-modal-title" class="exam-modal-title">
+              <span class="exam-modal-title-icon">📝</span>
+              <span>Tạo bài kiểm tra mới</span>
+            </h3>
+            <button class="modal-close exam-modal-close">&times;</button>
           </div>
-          <div class="modal-body">
+          <div class="modal-body exam-modal-body">
             <form id="teacher-exam-form">
-              <div class="form-section">
-                <h4>📝 Thông tin cơ bản</h4>
+              <div class="exam-form-section">
+                <h4 class="exam-form-section-title">
+                  <span class="exam-form-section-icon">📝</span>
+                  <span>Thông tin cơ bản</span>
+                </h4>
                 <div class="form-row">
-                  <div class="form-group">
-                    <label for="teacher-exam-title">Tên kỳ thi:</label>
+                  <div class="form-group form-group-spacing">
+                    <label for="teacher-exam-title" class="exam-form-label">
+                      Tên kỳ thi <span class="required-field">*</span>
+                    </label>
                     <input type="text" id="teacher-exam-title" name="title" required 
-                           placeholder="VD: Kiểm tra giữa kỳ - Toán học">
+                           placeholder="VD: Kiểm tra giữa kỳ - Toán học" class="exam-form-input">
                   </div>
-                  <div class="form-group">
-                    <label for="teacher-exam-course">Khóa học:</label>
-                    <select id="teacher-exam-course" name="courseId" required>
+                  <div class="form-group form-group-spacing">
+                    <label for="teacher-exam-course" class="exam-form-label">
+                      Khóa học <span class="required-field">*</span>
+                    </label>
+                    <select id="teacher-exam-course" name="courseId" required class="exam-form-input">
                       <option value="">Chọn khóa học</option>
                       ${teacherCourses.map(course =>
       `<option value="${course.id}">${course.title}</option>`
@@ -280,53 +295,68 @@ export function renderTeacherExams() {
                     </select>
                   </div>
                 </div>
-                <div class="form-group">
-                  <label for="teacher-exam-description">Mô tả:</label>
+                <div class="form-group form-group-spacing">
+                  <label for="teacher-exam-description" class="exam-form-label">Mô tả</label>
                   <textarea id="teacher-exam-description" name="description" rows="3" 
-                            placeholder="Mô tả ngắn gọn về nội dung và mục tiêu của kỳ thi..."></textarea>
+                            placeholder="Mô tả ngắn gọn về nội dung và mục tiêu của kỳ thi..." class="exam-form-textarea"></textarea>
                 </div>
-                <div class="form-group">
-                  <label for="teacher-exam-type">Loại bài kiểm tra:</label>
-                  <select id="teacher-exam-type" name="examType" required>
+                <div class="form-group form-group-spacing">
+                  <label for="teacher-exam-type" class="exam-form-label">
+                    Loại bài kiểm tra <span class="required-field">*</span>
+                  </label>
+                  <select id="teacher-exam-type" name="examType" required class="exam-form-input">
                     <option value="official">🏁 Bài kiểm tra</option>
                     <option value="practice">🧠 Quiz ôn tập</option>
                   </select>
-                  <small class="form-text text-muted">Bài kiểm tra: có giới hạn số lần làm. Quiz ôn tập: không giới hạn, có thể hiện đáp án</small>
+                  <small class="exam-form-help">Bài kiểm tra: có giới hạn số lần làm. Quiz ôn tập: không giới hạn, có thể hiện đáp án</small>
                 </div>
                 <div class="form-row">
-                  <div class="form-group">
-                    <label for="teacher-exam-attempts">Số lần làm tối đa:</label>
-                    <select id="teacher-exam-attempts" name="maxAttempts">
+                  <div class="form-group form-group-spacing">
+                    <label for="teacher-exam-attempts" class="exam-form-label">Số lần làm tối đa</label>
+                    <select id="teacher-exam-attempts" name="maxAttempts" class="exam-form-input">
                       <option value="1">1 lần</option>
                       <option value="2">2 lần</option>
                       <option value="3">3 lần</option>
                       <option value="-1">Không giới hạn</option>
                     </select>
-                    <small class="form-text text-muted" id="attempts-hint">Sẽ tự động cập nhật theo loại bài kiểm tra</small>
+                    <small class="exam-form-help" id="attempts-hint">Sẽ tự động cập nhật theo loại bài kiểm tra</small>
                   </div>
-                  <div class="form-group">
-                    <label for="teacher-exam-total-points">Tổng điểm:</label>
-                    <input type="number" id="teacher-exam-total-points" name="totalPoints" min="10" max="1000" 
-                           value="100" required step="0.5">
-                    <small class="form-text text-muted">Điểm sẽ được phân bổ đều cho các câu hỏi</small>
+                  <div class="form-group form-group-spacing">
+                    <label for="teacher-exam-total-points" class="exam-form-label">
+                      Tổng điểm <span class="required-field">*</span>
+                    </label>
+                    <input type="number" id="teacher-exam-total-points" name="totalPoints" min="1" max="10" 
+                           value="10" required step="0.5" class="exam-form-input">
+                    <small class="exam-form-help" id="total-points-hint">Điểm sẽ được phân bổ đều cho các câu hỏi (tối đa 10 điểm)</small>
                   </div>
                 </div>
               </div>
               
-              <div class="form-section">
-                <h4>❓ Câu hỏi trắc nghiệm</h4>
+              <div class="exam-form-section">
+                <div class="questions-header">
+                  <h4 class="questions-header-title">
+                    <span class="questions-header-icon">❓</span>
+                    <span>Câu hỏi trắc nghiệm</span>
+                  </h4>
+                </div>
                 <div class="questions-container" id="questions-container">
                   <!-- Câu hỏi sẽ được thêm vào đây -->
                 </div>
-                <button type="button" class="btn btn-outline add-question-btn" id="add-question-btn">
-                  <span>➕</span> Thêm câu hỏi
-                </button>
+                <div class="add-question-container">
+                  <button type="button" class="btn btn-primary add-question-btn" id="add-question-btn">
+                    <span class="add-question-btn-icon">➕</span>
+                    <span>Thêm câu hỏi</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" id="teacher-exam-modal-cancel">Hủy</button>
-            <button type="button" class="btn btn-primary" id="teacher-exam-modal-save">Lưu kỳ thi</button>
+          <div class="modal-footer exam-modal-footer">
+            <button type="button" class="btn btn-secondary exam-modal-cancel-btn" id="teacher-exam-modal-cancel">Hủy</button>
+            <button type="button" class="btn btn-primary exam-modal-save-btn" id="teacher-exam-modal-save">
+              <span class="exam-modal-save-icon">💾</span>
+              <span>Lưu kỳ thi</span>
+            </button>
           </div>
         </div>
       </div>
@@ -424,9 +454,14 @@ export function renderTeacherExams() {
       updateAttemptsHint(form['examType'].value);
       
       // Calculate total points from existing questions or use default
-      const totalPoints = exam.questions?.reduce((sum, q) => sum + (q.points || 1), 0) || 100;
+      const examType = exam.examType || 'official';
+      const defaultPoints = examType === 'official' ? 10 : 100;
+      const totalPoints = exam.questions?.reduce((sum, q) => sum + (q.points || 1), 0) || defaultPoints;
       form['totalPoints'].value = totalPoints;
-  
+      
+      // Update max points based on exam type
+      updateMaxPoints(examType);
+      
       // Load existing questions
       loadTeacherExamQuestions(questionsContainer, exam.questions || []);
     } else {
@@ -434,10 +469,11 @@ export function renderTeacherExams() {
       form.reset();
       form['examType'].value = 'official';
       form['maxAttempts'].value = 1;
-      form['totalPoints'].value = 100;
+      form['totalPoints'].value = 10;
       
-      // Update attempts hint based on exam type
+      // Update attempts hint and max points based on exam type
       updateAttemptsHint('official');
+      updateMaxPoints('official');
   
       // Clear questions and add one default question
       questionsContainer.innerHTML = '';
@@ -478,6 +514,7 @@ export function renderTeacherExams() {
         const examType = e.target.value;
         updateAttemptsBasedOnType(examType, modal);
         updateAttemptsHint(examType);
+        updateMaxPoints(examType);
       });
     }
     
@@ -873,6 +910,10 @@ export function renderTeacherExams() {
       saveToStorage(STORAGE_KEYS.EXAMS, exams);
       alert('✅ Kỳ thi mới đã được tạo thành công!');
     }
+    
+    // Reload page to show exam in correct tab
+    const currentRoute = stateManager.getState().currentRoute;
+    navigateTo(currentRoute);
   }
   
   // Edit teacher exam
@@ -1064,6 +1105,31 @@ function updateAttemptsBasedOnType(examType, modal) {
   }
 }
 
+// Update max points based on exam type
+function updateMaxPoints(examType) {
+  const totalPointsInput = document.querySelector('#teacher-exam-total-points');
+  const totalPointsHint = document.querySelector('#total-points-hint');
+  
+  if (!totalPointsInput) return;
+  
+  if (examType === 'official') {
+    // Bài kiểm tra: tối đa 10 điểm
+    totalPointsInput.max = 10;
+    if (parseFloat(totalPointsInput.value) > 10) {
+      totalPointsInput.value = 10;
+    }
+    if (totalPointsHint) {
+      totalPointsHint.textContent = 'Điểm sẽ được phân bổ đều cho các câu hỏi (tối đa 10 điểm)';
+    }
+  } else if (examType === 'practice') {
+    // Quiz ôn tập: tối đa 100 điểm
+    totalPointsInput.max = 100;
+    if (totalPointsHint) {
+      totalPointsHint.textContent = 'Điểm sẽ được phân bổ đều cho các câu hỏi (tối đa 100 điểm)';
+    }
+  }
+}
+
 // Update attempts hint text
 function updateAttemptsHint(examType) {
   const hint = document.querySelector('#attempts-hint');
@@ -1081,7 +1147,7 @@ function updatePointsDistribution(container) {
   const totalPointsInput = document.querySelector('#teacher-exam-total-points');
   if (!totalPointsInput) return;
   
-  const totalPoints = parseFloat(totalPointsInput.value) || 100;
+  const totalPoints = parseFloat(totalPointsInput.value) || 10;
   const questions = container.querySelectorAll('.question-item');
   const questionCount = questions.length;
   

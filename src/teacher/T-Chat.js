@@ -25,7 +25,13 @@ function containsBadWords(text) {
 }
 
 export function renderTeacherChat() {
+    // Kiểm tra quyền truy cập
     const currentUser = stateManager.getState().user;
+    if (!currentUser || currentUser.role !== 'teacher') {
+      navigateTo('/dashboard');
+      return document.createElement('div');
+    }
+    
     const courses = getFromStorage(STORAGE_KEYS.COURSES);
     const messages = getFromStorage(STORAGE_KEYS.CHAT_MESSAGES);
     const users = getFromStorage(STORAGE_KEYS.USERS);

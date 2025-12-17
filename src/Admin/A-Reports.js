@@ -6,6 +6,13 @@ import {
 } from '../utils.js';
 
 export function renderAdminReports() {
+    // Kiểm tra quyền truy cập
+    const currentUser = stateManager.getState().user;
+    if (!currentUser || currentUser.role !== 'admin') {
+      navigateTo('/dashboard');
+      return document.createElement('div');
+    }
+    
     const users = getFromStorage(STORAGE_KEYS.USERS) || [];
     const courses = getFromStorage(STORAGE_KEYS.COURSES) || [];
     const assignments = getFromStorage(STORAGE_KEYS.ASSIGNMENTS) || [];

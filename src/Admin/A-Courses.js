@@ -3,6 +3,13 @@ import { getFromStorage, STORAGE_KEYS, updateInStorage, deleteFromStorage } from
 import { navigateTo } from '../routing.js';
 
 export function renderAdminCourses() {
+    // Kiểm tra quyền truy cập
+    const currentUser = stateManager.getState().user;
+    if (!currentUser || currentUser.role !== 'admin') {
+      navigateTo('/dashboard');
+      return document.createElement('div');
+    }
+    
     const courses = getFromStorage(STORAGE_KEYS.COURSES) || [];
     const users = getFromStorage(STORAGE_KEYS.USERS) || [];
     const teachers = users.filter(u => u.role === 'teacher');

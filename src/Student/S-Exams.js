@@ -8,7 +8,13 @@ import {
 } from '../utils.js';
 
 export function renderStudentExams() {
+    // Kiểm tra quyền truy cập
     const currentUser = stateManager.getState().user;
+    if (!currentUser || currentUser.role !== 'student') {
+      navigateTo('/dashboard');
+      return document.createElement('div');
+    }
+    
     const courses = getFromStorage(STORAGE_KEYS.COURSES);
     const exams = getFromStorage(STORAGE_KEYS.EXAMS);
     const examResults = getFromStorage(STORAGE_KEYS.EXAM_RESULTS) || [];
@@ -195,16 +201,23 @@ export function renderStudentExams() {
       return;
     }
     
-    // Kiểm tra số lần làm cho kỳ thi chính thức
+    // Kiểm tra số lần làm
     const examType = exam.examType || 'official';
-    if (examType === 'official' && exam.maxAttempts > 0) {
-      const results = getFromStorage(STORAGE_KEYS.EXAM_RESULTS) || [];
-      const userAttempts = results.filter(r => 
-        r.examId === examId && r.studentId === currentUser.id
-      ).length;
-      
-      if (userAttempts >= exam.maxAttempts) {
-        alert(`Bạn đã hết lượt làm bài!\n\nSố lần làm tối đa: ${exam.maxAttempts}\nSố lần đã làm: ${userAttempts}`);
+    const results = getFromStorage(STORAGE_KEYS.EXAM_RESULTS) || [];
+    const userAttempts = results.filter(r => 
+      r.examId === examId && r.studentId === currentUser.id
+    ).length;
+    
+    if (examType === 'official') {
+      // Bài kiểm tra: không cho phép làm lại sau khi đã làm
+      if (userAttempts > 0) {
+        alert('Bạn đã hoàn thành bài kiểm tra này. Bài kiểm tra chỉ được làm một lần.\n\nVui lòng xem kết quả trong danh sách bài kiểm tra.');
+        return;
+      }
+    } else if (examType === 'practice') {
+      // Quiz ôn tập: kiểm tra maxAttempts nếu có giới hạn
+      if (exam.maxAttempts > 0 && userAttempts >= exam.maxAttempts) {
+        alert(`Bạn đã hết lượt làm quiz!\n\nSố lần làm tối đa: ${exam.maxAttempts}\nSố lần đã làm: ${userAttempts}`);
         return;
       }
     }
@@ -481,8 +494,9 @@ export function renderStudentExams() {
         </div>
       </div>
       
+      ${isPractice ? `
       <div class="results-details">
-        <h3>Chi tiết từng câu ${isPractice ? '(Đáp án đã hiển thị)' : ''}</h3>
+        <h3>Chi tiết từng câu (Đáp án đã hiển thị)</h3>
         <div class="answers-review">
           ${result.answers.map((answer, index) => {
             // Lấy thông tin đáp án đúng từ exam
@@ -511,14 +525,19 @@ export function renderStudentExams() {
           }).join('')}
         </div>
       </div>
+      ` : `
+      <div class="results-details">
+        <div class="exam-info-message">
+          <p>📋 Bài kiểm tra chỉ hiển thị điểm số. Chi tiết câu hỏi và đáp án sẽ không được hiển thị.</p>
+        </div>
+      </div>
+      `}
       
       <div class="results-actions">
         <button type="button" class="btn btn-secondary" id="view-exams">Về danh sách</button>
         ${isPractice ? `
           <button type="button" class="btn btn-primary" id="retake-exam">Làm lại quiz</button>
-        ` : `
-          <button type="button" class="btn btn-primary" id="retake-exam">Thi lại</button>
-        `}
+        ` : ''}
       </div>
     `;
     
@@ -552,9 +571,12 @@ export function renderStudentExams() {
       navigateTo('/student/exams');
     });
     
-    document.getElementById('retake-exam').addEventListener('click', () => {
-      takeExam(result.examId);
-    });
+    const retakeBtn = document.getElementById('retake-exam');
+    if (retakeBtn) {
+      retakeBtn.addEventListener('click', () => {
+        takeExam(result.examId);
+      });
+    }
   }
   
   function viewExamDetails(examId) {

@@ -15,6 +15,13 @@ function showModal(modal) {
 }
 
 export function renderAdminAssignments() {
+    // Kiểm tra quyền truy cập
+    const currentUser = stateManager.getState().user;
+    if (!currentUser || currentUser.role !== 'admin') {
+      navigateTo('/dashboard');
+      return document.createElement('div');
+    }
+    
     const assignments = getFromStorage(STORAGE_KEYS.ASSIGNMENTS);
     const courses = getFromStorage(STORAGE_KEYS.COURSES);
     const users = getFromStorage(STORAGE_KEYS.USERS);

@@ -7,7 +7,13 @@ import {
 } from '../utils.js';
 
 export function renderTeacherGrading() {
+    // Kiểm tra quyền truy cập
     const currentUser = stateManager.getState().user;
+    if (!currentUser || currentUser.role !== 'teacher') {
+      navigateTo('/dashboard');
+      return document.createElement('div');
+    }
+    
     const assignments = getFromStorage(STORAGE_KEYS.ASSIGNMENTS) || [];
     const submissions = getFromStorage(STORAGE_KEYS.SUBMISSIONS) || [];
     const exams = getFromStorage(STORAGE_KEYS.EXAMS) || [];
@@ -19,23 +25,52 @@ export function renderTeacherGrading() {
     const myAssignments = assignments.filter(a => a.teacherId === currentUser.id);
   
     // Get submissions for these assignments (Điểm bài ôn tập)
-    const mySubmissions = submissions.filter(s =>
-      myAssignments.some(a => a.id === s.assignmentId)
-    );
+    // Chỉ lấy submissions từ học sinh đã đăng ký khóa học
+    const enrollments = getFromStorage(STORAGE_KEYS.ENROLLMENTS) || [];
+    const mySubmissions = submissions.filter(s => {
+      const assignment = myAssignments.find(a => a.id === s.assignmentId);
+      if (!assignment) return false;
+      
+      // Kiểm tra học sinh có trong enrollment của khóa học không
+      const isEnrolled = enrollments.some(e =>
+        e.studentId === s.studentId &&
+        e.courseId === assignment.courseId &&
+        e.teacherId === currentUser.id
+      );
+      return isEnrolled;
+    });
   
     // Get exams created by this teacher
     const myExams = exams.filter(e => e.teacherId === currentUser.id);
     
     // Get exam results for official exams (Điểm bài kiểm tra)
+    // Chỉ lấy kết quả từ học sinh đã đăng ký khóa học
     const officialExamResults = examResults.filter(er => {
       const exam = myExams.find(e => e.id === er.examId);
-      return exam && exam.examType === 'official';
+      if (!exam || exam.examType !== 'official') return false;
+      
+      // Kiểm tra học sinh có trong enrollment của khóa học không
+      const isEnrolled = enrollments.some(e =>
+        e.studentId === er.studentId &&
+        e.courseId === exam.courseId &&
+        e.teacherId === currentUser.id
+      );
+      return isEnrolled;
     });
     
     // Get exam results for practice exams (Điểm bài ôn tập)
+    // Chỉ lấy kết quả từ học sinh đã đăng ký khóa học
     const practiceExamResults = examResults.filter(er => {
       const exam = myExams.find(e => e.id === er.examId);
-      return exam && exam.examType === 'practice';
+      if (!exam || exam.examType !== 'practice') return false;
+      
+      // Kiểm tra học sinh có trong enrollment của khóa học không
+      const isEnrolled = enrollments.some(e =>
+        e.studentId === er.studentId &&
+        e.courseId === exam.courseId &&
+        e.teacherId === currentUser.id
+      );
+      return isEnrolled;
     });
   
     const container = document.createElement('div');

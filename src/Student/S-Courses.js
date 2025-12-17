@@ -3,6 +3,9 @@ import { navigateTo } from '../routing.js';
 import {
   getFromStorage,
   updateInStorage,
+  addToStorage,
+  deleteFromStorage,
+  generateId,
   STORAGE_KEYS,
   extractYouTubeId,
   playVideoInModal,
@@ -11,16 +14,26 @@ import {
 } from '../utils.js';
 
 export function renderStudentCourses() {
+    // Kiểm tra quyền truy cập
     const currentUser = stateManager.getState().user;
+    if (!currentUser || currentUser.role !== 'student') {
+      navigateTo('/dashboard');
+      return document.createElement('div');
+    }
     
     // Get courses from storage (không xóa và re-init nữa)
     const courses = getFromStorage(STORAGE_KEYS.COURSES) || [];
+    const enrollments = getFromStorage(STORAGE_KEYS.ENROLLMENTS) || [];
     
-    // Lọc chỉ các khóa học mà học sinh đã đăng ký
+    // Lọc chỉ các khóa học mà học sinh đã đăng ký (sử dụng ENROLLMENTS)
+    const enrolledCourseIds = enrollments
+      .filter(e => e.studentId === currentUser.id)
+      .map(e => e.courseId);
+    
     const myCourses = courses.filter(course => {
       const isValid = course && course.id && course.title;
       const isActive = course.isActive !== false;
-      const isEnrolled = course.students?.includes(currentUser.id);
+      const isEnrolled = enrolledCourseIds.includes(course.id);
       return isValid && isActive && isEnrolled;
     });
   
@@ -516,6 +529,19 @@ export function renderStudentCourses() {
                   <span class="meta-item">📚 ${course.lessons?.length || 0} bài học</span>
                   <span class="meta-item">📅 ${new Date(course.createdAt).toLocaleDateString('vi-VN')}</span>
                 </div>
+                ${!course.isPublic && course.enrollmentCode ? `
+                  <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 6px; border-left: 3px solid #ffc107;">
+                    <span style="font-size: 14px; color: #856404;">
+                      🔐 <strong>Yêu cầu mã ghi danh</strong> - Vui lòng liên hệ giảng viên để lấy mã
+                    </span>
+                  </div>
+                ` : course.isPublic ? `
+                  <div style="margin-top: 10px; padding: 8px; background: #d4edda; border-radius: 6px; border-left: 3px solid #28a745;">
+                    <span style="font-size: 14px; color: #155724;">
+                      🔓 <strong>Khóa học công khai</strong> - Có thể đăng ký tự do
+                    </span>
+                  </div>
+                ` : ''}
               </div>
               
               <div class="course-actions">
@@ -615,6 +641,7 @@ export function renderStudentCourses() {
   function enrollInCourse(courseId, container) {
     const currentUser = stateManager.getState().user;
     const courses = getFromStorage(STORAGE_KEYS.COURSES) || [];
+    const enrollments = getFromStorage(STORAGE_KEYS.ENROLLMENTS) || [];
     const course = courses.find(c => c.id === courseId);
     
     if (!course) {
@@ -622,15 +649,55 @@ export function renderStudentCourses() {
       return;
     }
     
-    if (course.students?.includes(currentUser.id)) {
+    // Kiểm tra đã đăng ký chưa (sử dụng ENROLLMENTS)
+    const existingEnrollment = enrollments.find(
+      e => e.studentId === currentUser.id && e.courseId === courseId
+    );
+    
+    if (existingEnrollment) {
       alert('Bạn đã đăng ký khóa học này rồi!');
       return;
     }
     
+    // Kiểm tra mã ghi danh nếu khóa học không public
+    if (!course.isPublic && course.enrollmentCode) {
+      // Hiển thị modal đẹp hơn thay vì prompt
+      showEnrollmentCodeModal(course, (code) => {
+        if (!code || code.toUpperCase() !== course.enrollmentCode.toUpperCase()) {
+          if (code !== null) { // null nghĩa là user đã cancel
+            alert('❌ Sai mã ghi danh!\n\nVui lòng kiểm tra lại mã ghi danh từ giảng viên.');
+          }
+          return;
+        }
+        // Tiếp tục với enrollment nếu mã đúng
+        proceedWithEnrollment(courseId, course, container);
+      });
+      return; // Dừng lại, sẽ tiếp tục trong callback
+    }
+    
+    // Nếu không cần mã hoặc mã đúng, tiếp tục enrollment
+    proceedWithEnrollment(courseId, course, container);
+  }
+  
+  // Hàm thực hiện enrollment sau khi kiểm tra mã
+  function proceedWithEnrollment(courseId, course, container) {
+    const currentUser = stateManager.getState().user;
+    const enrollments = getFromStorage(STORAGE_KEYS.ENROLLMENTS) || [];
+    
     const confirmMessage = `Bạn có chắc chắn muốn đăng ký khóa học "${course.title}"?\n\nGiảng viên: ${course.teacherName}\nSố bài học: ${course.lessons?.length || 0}`;
     
     if (confirm(confirmMessage)) {
-      // Add student to course
+      // Tạo enrollment record
+      const newEnrollment = {
+        id: generateId(),
+        studentId: currentUser.id,
+        courseId: courseId,
+        teacherId: course.teacherId,
+        enrolledAt: new Date().toISOString()
+      };
+      addToStorage(STORAGE_KEYS.ENROLLMENTS, newEnrollment);
+      
+      // Cũng cập nhật course.students để tương thích ngược
       const updatedStudents = [...(course.students || []), currentUser.id];
       updateInStorage(STORAGE_KEYS.COURSES, courseId, { students: updatedStudents });
       
@@ -653,10 +720,107 @@ export function renderStudentCourses() {
     }
   }
   
+  // Hiển thị modal nhập mã ghi danh
+  function showEnrollmentCodeModal(course, callback) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'flex';
+    
+    modal.innerHTML = `
+      <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+          <h3 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+            🔐 Nhập mã ghi danh
+          </h3>
+          <button class="modal-close" style="color: white; font-size: 24px;">&times;</button>
+        </div>
+        <div class="modal-body" style="padding: 25px;">
+          <div style="margin-bottom: 20px;">
+            <p style="margin: 0 0 10px 0; font-weight: 500; color: #333;">
+              Khóa học: <strong>${course.title}</strong>
+            </p>
+            <p style="margin: 0; color: #666; font-size: 14px;">
+              Giảng viên: ${course.teacherName}
+            </p>
+          </div>
+          <div style="background: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin-bottom: 20px;">
+            <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.6;">
+              ⚠️ Khóa học này yêu cầu mã ghi danh. Vui lòng nhập mã được cung cấp bởi giảng viên.
+            </p>
+          </div>
+          <div class="form-group">
+            <label for="enrollment-code-input" style="display: block; margin-bottom: 8px; font-weight: 500; color: #333;">
+              Mã ghi danh:
+            </label>
+            <input 
+              type="text" 
+              id="enrollment-code-input" 
+              class="form-control" 
+              placeholder="Nhập mã ghi danh..."
+              style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; letter-spacing: 1px; text-transform: uppercase;"
+              autofocus
+            >
+          </div>
+        </div>
+        <div class="modal-footer" style="padding: 15px 25px; border-top: 1px solid #eee; display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" id="enrollment-cancel-btn" style="padding: 10px 20px;">
+            Hủy
+          </button>
+          <button type="button" class="btn btn-primary" id="enrollment-submit-btn" style="padding: 10px 20px;">
+            Xác nhận
+          </button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    document.body.classList.add('modal-open');
+    
+    const input = modal.querySelector('#enrollment-code-input');
+    const submitBtn = modal.querySelector('#enrollment-submit-btn');
+    const cancelBtn = modal.querySelector('#enrollment-cancel-btn');
+    const closeBtn = modal.querySelector('.modal-close');
+    
+    const closeModal = (result = null) => {
+      document.body.removeChild(modal);
+      document.body.classList.remove('modal-open');
+      if (callback) callback(result);
+    };
+    
+    submitBtn.addEventListener('click', () => {
+      const code = input.value.trim().toUpperCase();
+      if (code) {
+        closeModal(code);
+      } else {
+        input.style.borderColor = '#f44336';
+        input.focus();
+      }
+    });
+    
+    cancelBtn.addEventListener('click', () => closeModal(null));
+    closeBtn.addEventListener('click', () => closeModal(null));
+    
+    input.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        submitBtn.click();
+      }
+    });
+    
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        closeModal(null);
+      }
+    });
+    
+    // Focus vào input
+    setTimeout(() => input.focus(), 100);
+  }
+  
   // Unenroll from course
   function unenrollFromCourse(courseId, container) {
     const currentUser = stateManager.getState().user;
     const courses = getFromStorage(STORAGE_KEYS.COURSES);
+    const enrollments = getFromStorage(STORAGE_KEYS.ENROLLMENTS) || [];
     const course = courses.find(c => c.id === courseId);
     
     if (!course) {
@@ -667,7 +831,15 @@ export function renderStudentCourses() {
     const confirmMessage = `Bạn có chắc chắn muốn hủy đăng ký khóa học "${course.title}"?\n\n⚠️ Lưu ý: Bạn sẽ mất quyền truy cập vào tất cả nội dung của khóa học này!`;
     
     if (confirm(confirmMessage)) {
-      // Remove student from course
+      // Xóa enrollment record
+      const enrollment = enrollments.find(
+        e => e.studentId === currentUser.id && e.courseId === courseId
+      );
+      if (enrollment) {
+        deleteFromStorage(STORAGE_KEYS.ENROLLMENTS, enrollment.id);
+      }
+      
+      // Cũng cập nhật course.students để tương thích ngược
       const updatedStudents = (course.students || []).filter(id => id !== currentUser.id);
       updateInStorage(STORAGE_KEYS.COURSES, courseId, { students: updatedStudents });
       

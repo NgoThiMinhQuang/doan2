@@ -3,6 +3,13 @@ import { getFromStorage, STORAGE_KEYS, addToStorage, updateInStorage, deleteFrom
 import { navigateTo } from '../routing.js';
 
 export function renderAdminUsers() {
+    // Kiểm tra quyền truy cập
+    const currentUser = stateManager.getState().user;
+    if (!currentUser || currentUser.role !== 'admin') {
+      navigateTo('/dashboard');
+      return document.createElement('div');
+    }
+    
     const users = getFromStorage(STORAGE_KEYS.USERS);
     const container = document.createElement('div');
     container.className = 'admin-users';

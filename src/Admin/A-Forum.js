@@ -607,8 +607,14 @@ function kickStudentFromCourse(courseId, studentId) {
 }
 
 export function renderAdminForum() {
-  const currentUser = stateManager.getState().user;
-  const courses = getFromStorage(STORAGE_KEYS.COURSES);
+    // Kiểm tra quyền truy cập
+    const currentUser = stateManager.getState().user;
+    if (!currentUser || currentUser.role !== 'admin') {
+      navigateTo('/dashboard');
+      return document.createElement('div');
+    }
+    
+    const courses = getFromStorage(STORAGE_KEYS.COURSES);
   
   // Admin có thể xem tất cả khóa học
   const allCourses = courses || [];

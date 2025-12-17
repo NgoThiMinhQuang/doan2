@@ -5,6 +5,7 @@ import {
   addToStorage,
   updateInStorage,
   saveToStorage,
+  deleteFromStorage,
   generateId,
   STORAGE_KEYS,
   extractYouTubeId,
@@ -14,7 +15,13 @@ import {
 } from '../utils.js';
 
 export function renderTeacherCourses() {
+    // Kiểm tra quyền truy cập
     const currentUser = stateManager.getState().user;
+    if (!currentUser || currentUser.role !== 'teacher') {
+      navigateTo('/dashboard');
+      return document.createElement('div');
+    }
+    
     const courses = getFromStorage(STORAGE_KEYS.COURSES);
     
     // Filter courses for this teacher
@@ -57,9 +64,18 @@ export function renderTeacherCourses() {
                   </div>
                 </div>
               ` : ''}
-              <p><strong>Số học sinh:</strong> ${course.students?.length}</p>
+              <p><strong>Số học sinh:</strong> ${course.students?.length || 0}</p>
               <p><strong>Số bài học:</strong> ${course.lessons ? course.lessons?.length : 0}</p>
               <p><strong>Ngày tạo:</strong> ${new Date(course.createdAt).toLocaleDateString('vi-VN')}</p>
+              ${!course.isPublic && course.enrollmentCode ? `
+                <p class="course-enrollment-badge">
+                  <strong>🔐 Mã ghi danh:</strong> <code class="course-enrollment-code">${course.enrollmentCode}</code>
+                </p>
+              ` : course.isPublic ? `
+                <p class="course-public-badge">
+                  <strong>🔓 Khóa học công khai</strong> - Học sinh có thể tự đăng ký
+                </p>
+              ` : ''}
             </div>
             <div class="course-actions">
               <button class="btn btn-sm btn-edit" data-course-id="${course.id}">Chỉnh sửa</button>
@@ -74,42 +90,95 @@ export function renderTeacherCourses() {
       </div>
   
       <div id="course-modal" class="modal" style="display: none;">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h3 id="course-modal-title">Tạo khóa học mới</h3>
-            <button class="modal-close">&times;</button>
+        <div class="modal-content course-modal-content">
+          <div class="modal-header course-modal-header">
+            <h3 id="course-modal-title" class="course-modal-title">
+              <span class="course-modal-title-icon">📚</span>
+              <span>Tạo khóa học mới</span>
+            </h3>
+            <button class="modal-close course-modal-close">&times;</button>
           </div>
-          <div class="modal-body">
+          <div class="modal-body course-modal-body">
             <form id="course-form">
-              <div class="form-group">
-                <label for="course-title">Tên khóa học:</label>
-                <input type="text" id="course-title" name="title" required>
+              <!-- Thông tin cơ bản -->
+              <div class="course-form-section">
+                <h4 class="course-form-section-title">
+                  <span class="course-form-section-icon">📝</span>
+                  <span>Thông tin cơ bản</span>
+                </h4>
+                <div class="form-group form-group-spacing">
+                  <label for="course-title" class="course-form-label">
+                    Tên khóa học <span class="required-field">*</span>
+                  </label>
+                  <input type="text" id="course-title" name="title" class="course-form-input" required placeholder="Nhập tên khóa học...">
+                </div>
+                <div class="form-group form-group-spacing-none">
+                  <label for="course-description" class="course-form-label">
+                    Mô tả khóa học <span class="required-field">*</span>
+                  </label>
+                  <textarea id="course-description" name="description" rows="4" class="course-form-textarea" required placeholder="Mô tả ngắn gọn về nội dung và mục tiêu của khóa học..."></textarea>
+                </div>
               </div>
-              <div class="form-group">
-                <label for="course-description">Mô tả:</label>
-                <textarea id="course-description" name="description" rows="4" required></textarea>
-              </div>
-              <div class="form-group">
-                <label for="course-video-url">Video giới thiệu (YouTube URL):</label>
-                <input type="url" id="course-video-url" name="videoUrl" 
-                       placeholder="https://www.youtube.com/watch?v=... hoặc https://youtu.be/...">
-                <small class="form-help">Nhập link YouTube để học sinh có thể xem video giới thiệu khóa học</small>
+
+              <!-- Cài đặt đăng ký -->
+              <div class="course-form-section course-form-section-registration">
+                <h4 class="course-form-section-title">
+                  <span class="course-form-section-icon">🔐</span>
+                  <span>Cài đặt đăng ký</span>
+                </h4>
+                <div class="form-group form-group-spacing-small">
+                  <label class="course-checkbox-label">
+                    <input type="checkbox" id="course-is-public" name="isPublic" class="course-checkbox" checked>
+                    <div class="course-checkbox-content">
+                      <span class="course-checkbox-title">
+                        <span>🔓</span>
+                        <span>Khóa học công khai</span>
+                      </span>
+                      <div class="course-checkbox-description">
+                        Cho phép tất cả học sinh tự đăng ký khóa học mà không cần mã ghi danh
+                      </div>
+                    </div>
+                  </label>
+                </div>
+                <div class="form-group enrollment-code-group" id="enrollment-code-group">
+                  <label for="course-enrollment-code" class="enrollment-code-label">
+                    <span class="enrollment-code-icon">🔐</span>
+                    <span>Mã ghi danh</span>
+                    <span class="required-field">*</span>
+                  </label>
+                  <input type="text" id="course-enrollment-code" name="enrollmentCode" class="enrollment-code-input" placeholder="VD: TRR-D21-A">
+                  <small class="enrollment-code-warning">
+                    ⚠️ <strong>Lưu ý:</strong> Học sinh cần nhập đúng mã này để đăng ký khóa học. Hãy chia sẻ mã với học sinh của bạn sau khi tạo khóa học.
+                  </small>
+                </div>
               </div>
               
+              <!-- Danh sách bài học -->
               <div class="lessons-section">
                 <div class="lessons-header">
-                  <label>📚 Danh sách bài học:</label>
-                  <button type="button" class="btn btn-sm btn-primary add-lesson-btn">+ Thêm bài học</button>
+                  <h4 class="lessons-header-title">
+                    <span class="lessons-header-icon">📚</span>
+                    <span>Danh sách bài học</span>
+                  </h4>
                 </div>
                 <div id="lessons-list" class="lessons-list">
                   <!-- Lessons will be added here -->
                 </div>
+                <div class="add-lesson-container">
+                  <button type="button" class="btn btn-sm btn-primary add-lesson-btn">
+                    <span class="add-lesson-btn-icon">➕</span>
+                    <span>Thêm bài học</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" id="course-modal-cancel">Hủy</button>
-            <button type="button" class="btn btn-primary" id="course-modal-save">Lưu</button>
+          <div class="modal-footer course-modal-footer">
+            <button type="button" class="btn btn-secondary course-modal-cancel-btn" id="course-modal-cancel">Hủy</button>
+            <button type="button" class="btn btn-primary course-modal-save-btn" id="course-modal-save">
+              <span>💾</span>
+              <span>Lưu khóa học</span>
+            </button>
           </div>
         </div>
       </div>
@@ -162,11 +231,18 @@ export function renderTeacherCourses() {
     const title = container.querySelector('#course-modal-title');
   
     if (course) {
-      title.textContent = 'Chỉnh sửa khóa học';
+      title.innerHTML = '<span>✏️</span> <span>Chỉnh sửa khóa học</span>';
       // Điền tất cả dữ liệu hiện tại vào form
       form['title'].value = course.title || '';
       form['description'].value = course.description || '';
-      form['videoUrl'].value = course.videoUrl || '';
+      form['isPublic'].checked = course.isPublic !== false;
+      form['enrollmentCode'].value = course.enrollmentCode || '';
+      
+      // Hiển thị/ẩn enrollment code field
+      const enrollmentCodeGroup = form.querySelector('#enrollment-code-group');
+      if (enrollmentCodeGroup) {
+        enrollmentCodeGroup.style.display = form['isPublic'].checked ? 'none' : 'block';
+      }
       
       // Populate lessons if editing
       const lessonsList = form.querySelector('#lessons-list');
@@ -180,7 +256,7 @@ export function renderTeacherCourses() {
         addLessonInput(form);
       }
     } else {
-      title.textContent = 'Tạo khóa học mới';
+      title.innerHTML = '<span>📚</span> <span>Tạo khóa học mới</span>';
       form.reset();
       // Clear lessons list
       const lessonsList = form.querySelector('#lessons-list');
@@ -211,6 +287,15 @@ export function renderTeacherCourses() {
       addLessonInput(form);
     });
     
+    // Toggle enrollment code field based on isPublic checkbox
+    const isPublicCheckbox = form.querySelector('#course-is-public');
+    const enrollmentCodeGroup = form.querySelector('#enrollment-code-group');
+    if (isPublicCheckbox && enrollmentCodeGroup) {
+      isPublicCheckbox.addEventListener('change', (e) => {
+        enrollmentCodeGroup.style.display = e.target.checked ? 'none' : 'block';
+      });
+    }
+    
     // Event delegation for remove buttons
     modal.addEventListener('click', (e) => {
       if (e.target.classList.contains('remove-lesson-btn')) {
@@ -237,6 +322,7 @@ export function renderTeacherCourses() {
     
     const lessonDiv = document.createElement('div');
     lessonDiv.className = 'lesson-input-group';
+    
     // Đảm bảo tất cả giá trị được điền đúng, kể cả khi là undefined hoặc null
     const lessonTitle = lesson?.title || '';
     const lessonDescription = lesson?.description || '';
@@ -244,23 +330,37 @@ export function renderTeacherCourses() {
     const lessonDuration = lesson?.duration || '';
     
     lessonDiv.innerHTML = `
-      <div class="form-group">
-        <label>Bài ${lessonIndex}: Tên bài học</label>
-        <input type="text" class="lesson-title" value="${lessonTitle}" placeholder="Ví dụ: Logic mệnh đề" required>
+      <div class="lesson-header">
+        <h5 class="lesson-header-title">
+          <span class="lesson-header-icon">📖</span>
+          <span>Bài ${lessonIndex}</span>
+        </h5>
+        <button type="button" class="remove-lesson-btn">🗑️ Xóa</button>
       </div>
-      <div class="form-group">
-        <label>Mô tả bài học</label>
-        <input type="text" class="lesson-description" value="${lessonDescription}" placeholder="Mô tả ngắn về bài học" required>
+      <div class="form-group form-group-spacing-medium">
+        <label class="lesson-form-label">
+          Tên bài học <span class="required-field">*</span>
+        </label>
+        <input type="text" class="lesson-title lesson-form-input" value="${lessonTitle}" placeholder="Ví dụ: Logic mệnh đề" required>
       </div>
-      <div class="form-group">
-        <label>Video (YouTube URL)</label>
-        <input type="url" class="lesson-video" value="${lessonVideoUrl}" placeholder="https://youtu.be/... hoặc https://www.youtube.com/watch?v=..." required>
+      <div class="form-group form-group-spacing-medium">
+        <label class="lesson-form-label">
+          Mô tả bài học <span class="required-field">*</span>
+        </label>
+        <input type="text" class="lesson-description lesson-form-input" value="${lessonDescription}" placeholder="Mô tả ngắn về bài học" required>
       </div>
-      <div class="form-group">
-        <label>Thời lượng (phút)</label>
-        <input type="number" class="lesson-duration" value="${lessonDuration}" placeholder="Ví dụ: 45" min="1" required>
+      <div class="form-group form-group-spacing-medium">
+        <label class="lesson-form-label">
+          Video (YouTube URL) <span class="required-field">*</span>
+        </label>
+        <input type="url" class="lesson-video lesson-form-input" value="${lessonVideoUrl}" placeholder="https://youtu.be/..." required>
       </div>
-      <button type="button" class="remove-lesson-btn">Xóa bài học này</button>
+      <div class="form-group form-group-spacing-none">
+        <label class="lesson-form-label">
+          Thời lượng (phút) <span class="required-field">*</span>
+        </label>
+        <input type="number" class="lesson-duration lesson-form-input" value="${lessonDuration}" placeholder="45" min="1" required>
+      </div>
     `;
     
     lessonsList.appendChild(lessonDiv);
@@ -282,15 +382,19 @@ export function renderTeacherCourses() {
       isActive: true
     }));
     
+    const isPublic = form['isPublic']?.checked || false;
+    const enrollmentCode = form['enrollmentCode']?.value?.trim() || null;
+    
     const courseData = {
       title: form['title'].value,
       description: form['description'].value,
-      videoUrl: form['videoUrl'].value.trim() || null,
       teacherId: currentUser.id,
       teacherName: currentUser.fullName,
       students: courseId ? undefined : [],
       lessons: lessons,
       isActive: true,
+      isPublic: isPublic,
+      enrollmentCode: isPublic ? null : (enrollmentCode || generateId().substring(0, 10)),
       createdAt: courseId ? undefined : new Date().toISOString()
     };
   
@@ -411,6 +515,7 @@ export function renderTeacherCourses() {
   function showCourseStudentsModal(courseId) {
     const courses = getFromStorage(STORAGE_KEYS.COURSES);
     const users = getFromStorage(STORAGE_KEYS.USERS);
+    const enrollments = getFromStorage(STORAGE_KEYS.ENROLLMENTS) || [];
     const course = courses.find(c => c.id === courseId);
     
     if (!course) {
@@ -418,8 +523,13 @@ export function renderTeacherCourses() {
       return;
     }
     
+    // Lấy danh sách học sinh từ ENROLLMENTS
+    const enrolledStudentIds = enrollments
+      .filter(e => e.courseId === courseId && e.teacherId === course.teacherId)
+      .map(e => e.studentId);
+    
     const enrolledStudents = users.filter(user => 
-      user.role === 'student' && course.students?.includes(user.id)
+      user.role === 'student' && enrolledStudentIds.includes(user.id)
     );
     
     const allStudents = users.filter(user => user.role === 'student');
@@ -521,15 +631,34 @@ export function renderTeacherCourses() {
   
   function addStudentToCourse(courseId, studentId) {
     const courses = getFromStorage(STORAGE_KEYS.COURSES);
+    const enrollments = getFromStorage(STORAGE_KEYS.ENROLLMENTS) || [];
     const course = courses.find(c => c.id === courseId);
     
     if (course) {
-      if (!course.students) {
-        course.students = [];
-      }
-      if (!course.students.includes(studentId)) {
-        course.students.push(studentId);
-        updateInStorage(STORAGE_KEYS.COURSES, courseId, course);
+      // Kiểm tra đã có enrollment chưa
+      const existingEnrollment = enrollments.find(
+        e => e.studentId === studentId && e.courseId === courseId
+      );
+      
+      if (!existingEnrollment) {
+        // Tạo enrollment record
+        const newEnrollment = {
+          id: generateId(),
+          studentId: studentId,
+          courseId: courseId,
+          teacherId: course.teacherId,
+          enrolledAt: new Date().toISOString()
+        };
+        addToStorage(STORAGE_KEYS.ENROLLMENTS, newEnrollment);
+        
+        // Cũng cập nhật course.students để tương thích ngược
+        if (!course.students) {
+          course.students = [];
+        }
+        if (!course.students.includes(studentId)) {
+          course.students.push(studentId);
+          updateInStorage(STORAGE_KEYS.COURSES, courseId, course);
+        }
         
         // Broadcast course update event
         window.dispatchEvent(new CustomEvent('coursesUpdated', {
@@ -541,11 +670,23 @@ export function renderTeacherCourses() {
   
   function removeStudentFromCourse(courseId, studentId) {
     const courses = getFromStorage(STORAGE_KEYS.COURSES);
+    const enrollments = getFromStorage(STORAGE_KEYS.ENROLLMENTS) || [];
     const course = courses.find(c => c.id === courseId);
     
-    if (course && course.students) {
-      course.students = course.students.filter(id => id !== studentId);
-      updateInStorage(STORAGE_KEYS.COURSES, courseId, course);
+    if (course) {
+      // Xóa enrollment record
+      const enrollment = enrollments.find(
+        e => e.studentId === studentId && e.courseId === courseId
+      );
+      if (enrollment) {
+        deleteFromStorage(STORAGE_KEYS.ENROLLMENTS, enrollment.id);
+      }
+      
+      // Cũng cập nhật course.students để tương thích ngược
+      if (course.students) {
+        course.students = course.students.filter(id => id !== studentId);
+        updateInStorage(STORAGE_KEYS.COURSES, courseId, course);
+      }
       
       // Broadcast course update event
       window.dispatchEvent(new CustomEvent('coursesUpdated', {
@@ -586,7 +727,7 @@ export function renderTeacherCourses() {
             <button class="btn btn-primary btn-watch-lesson" data-video-url="${lesson.videoUrl}">📖 Xem bài học</button>
           </div>
         `).join('')
-      : '<p style="text-align: center; color: #999; padding: 40px;">Chưa có bài học nào</p>';
+      : '<p class="no-lessons-message">Chưa có bài học nào</p>';
     
     const modal = document.createElement('div');
     modal.className = 'modal';

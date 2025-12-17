@@ -53,7 +53,8 @@ export const STORAGE_KEYS = {
   LESSONS: 'school_lessons',
   LESSON_PROGRESS: 'school_lesson_progress',
   COURSE_COMPLETIONS: 'school_course_completions',
-  CHAT_LAST_VIEWED: 'school_chat_last_viewed'
+  CHAT_LAST_VIEWED: 'school_chat_last_viewed',
+  ENROLLMENTS: 'school_enrollments'
 };
 
 // Initialize sample data
@@ -271,6 +272,28 @@ export const initializeSampleData = () => {
       }
     ];
     saveToStorage(STORAGE_KEYS.COURSES, sampleCourses);
+  }
+
+  // Sample enrollments - tạo từ students array trong courses
+  if (getFromStorage(STORAGE_KEYS.ENROLLMENTS).length === 0) {
+    const sampleEnrollments = [];
+    const courses = getFromStorage(STORAGE_KEYS.COURSES);
+    
+    courses.forEach((course, courseIndex) => {
+      if (course.students && Array.isArray(course.students)) {
+        course.students.forEach((studentId, studentIndex) => {
+          sampleEnrollments.push({
+            id: `enroll_${course.id}_${studentId}`,
+            studentId: studentId,
+            courseId: course.id,
+            teacherId: course.teacherId,
+            enrolledAt: course.createdAt || new Date().toISOString()
+          });
+        });
+      }
+    });
+    
+    saveToStorage(STORAGE_KEYS.ENROLLMENTS, sampleEnrollments);
   }
 
   // Sample assignments

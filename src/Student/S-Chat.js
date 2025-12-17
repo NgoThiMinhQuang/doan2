@@ -37,6 +37,59 @@ function censorBadWords(text) {
   return censoredText;
 }
 
+// Hàm tìm và đánh dấu từ không chuẩn mực với icon cảnh báo
+function markBadWordsWithIcon(text) {
+  let markedText = text;
+  const foundWords = [];
+  
+  // Tìm tất cả từ không chuẩn mực và vị trí của chúng
+  BAD_WORDS.forEach(word => {
+    const regex = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    let match;
+    const textCopy = markedText; // Lưu bản gốc để tìm vị trí
+    while ((match = regex.exec(textCopy)) !== null) {
+      // Kiểm tra xem từ này đã được đánh dấu chưa (tránh trùng lặp)
+      const isAlreadyMarked = foundWords.some(fw => 
+        match.index >= fw.index && match.index < fw.index + fw.length
+      );
+      if (!isAlreadyMarked) {
+        foundWords.push({
+          word: match[0],
+          index: match.index,
+          length: match[0].length
+        });
+      }
+    }
+  });
+  
+  // Sắp xếp theo vị trí giảm dần để thay thế từ cuối lên đầu (tránh lệch index)
+  foundWords.sort((a, b) => b.index - a.index);
+  
+  // Thay thế từng từ bằng từ đã che + icon cảnh báo
+  foundWords.forEach(({ word, index, length }) => {
+    const censored = '*'.repeat(length);
+    const before = markedText.substring(0, index);
+    const after = markedText.substring(index + length);
+    markedText = before + censored + '<span class="bad-word-icon" style="display: inline-block; margin-left: 4px; font-size: 14px;" title="Từ ngữ không chuẩn mực">⚠️</span>' + after;
+  });
+  
+  return markedText;
+}
+
+// Hàm lấy danh sách từ không chuẩn mực trong tin nhắn
+function getBadWordsInText(text) {
+  const lowerText = text.toLowerCase();
+  const foundWords = [];
+  
+  BAD_WORDS.forEach(word => {
+    if (lowerText.includes(word.toLowerCase())) {
+      foundWords.push(word);
+    }
+  });
+  
+  return foundWords;
+}
+
 // These functions are also defined in T-Chat.js - using shared implementation
 function loadCourseMessages(container, courseId) {
   const courses = getFromStorage(STORAGE_KEYS.COURSES);
@@ -85,17 +138,18 @@ function loadCourseMessages(container, courseId) {
         
         // Xác định nội dung tin nhắn để hiển thị
         let displayContent = msg.content;
-        let showRedDot = false;
+        let isInappropriate = false;
+        let badWordsList = [];
         
         // Nếu là sinh viên
         if (currentUser.role === 'student') {
-          const isInappropriate = msg.isInappropriate || containsBadWords(msg.content);
+          isInappropriate = msg.isInappropriate || containsBadWords(msg.content);
           
           if (isOwnMessage) {
-            // Tin nhắn của chính mình: che từ không chuẩn mực bằng dấu * và thêm chấm đỏ
+            // Tin nhắn của chính mình: che từ không chuẩn mực bằng dấu * và đánh dấu với icon cảnh báo
             if (isInappropriate) {
-              showRedDot = true;
-              displayContent = censorBadWords(msg.content);
+              displayContent = markBadWordsWithIcon(msg.content);
+              badWordsList = getBadWordsInText(msg.content);
             } else {
               displayContent = msg.content;
             }
@@ -124,10 +178,15 @@ function loadCourseMessages(container, courseId) {
                 </div>
               ` : ''}
               <div class="message-bubble" style="position: relative;">
-                <p style="margin: 0 0 4px 0; word-wrap: break-word; display: flex; align-items: center; gap: 8px;">
-                  ${showRedDot ? '<span style="display: inline-block; width: 10px; height: 10px; background-color: #f44336; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 4px rgba(244, 67, 54, 0.5);" title="Tin nhắn chứa từ ngữ không chuẩn mực"></span>' : ''}
-                  <span style="flex: 1;">${displayContent}</span>
+                <p style="margin: 0 0 4px 0; word-wrap: break-word;">
+                  ${displayContent}
                 </p>
+                ${isInappropriate && isOwnMessage ? `
+                  <div class="inappropriate-warning" style="margin-top: 8px; padding: 8px 12px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 6px; font-size: 12px; color: #856404; display: flex; align-items: center; gap: 6px;">
+                    <span>⚠️</span>
+                    <span>Tin nhắn của bạn chứa từ ngữ không chuẩn mực. Vui lòng sử dụng ngôn ngữ phù hợp trong lớp học.</span>
+                  </div>
+                ` : ''}
                 <div class="message-time">${new Date(msg.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</div>
               </div>
             </div>
@@ -308,7 +367,13 @@ function sendMessage(courseId, content) {
 }
 
 export function renderStudentChat() {
+    // Kiểm tra quyền truy cập
     const currentUser = stateManager.getState().user;
+    if (!currentUser || currentUser.role !== 'student') {
+      navigateTo('/dashboard');
+      return document.createElement('div');
+    }
+    
     const courses = getFromStorage(STORAGE_KEYS.COURSES);
     const messages = getFromStorage(STORAGE_KEYS.CHAT_MESSAGES);
     const users = getFromStorage(STORAGE_KEYS.USERS);
@@ -354,9 +419,6 @@ export function renderStudentChat() {
           </div>
           
           <div class="chat-input-form" id="chat-input-form" style="display: none; padding: 15px; border-top: 1px solid #e0e0e0; background: #fff;">
-            <div id="bad-word-warning" style="display: none; background: #ffebee; border: 2px solid #f44336; border-radius: 4px; padding: 10px; margin-bottom: 10px; color: #c62828; font-weight: bold;">
-              ⚠️ Cảnh báo: Tin nhắn của bạn chứa từ ngữ không chuẩn mực. Vui lòng sửa lại!
-            </div>
             <form id="message-form">
               <div class="chat-input-container">
                 <input type="text" id="message-input" class="chat-input" placeholder="Nhập tin nhắn..." required>
@@ -426,21 +488,6 @@ export function renderStudentChat() {
     // Message form
     const messageForm = container.querySelector('#message-form');
     const messageInput = container.querySelector('#message-input');
-    const badWordWarning = container.querySelector('#bad-word-warning');
-    
-    // Kiểm tra từ không chuẩn mực khi gõ
-    messageInput.addEventListener('input', (e) => {
-      const message = e.target.value.trim();
-      if (message && containsBadWords(message)) {
-        badWordWarning.style.display = 'block';
-        messageInput.style.border = '2px solid #f44336';
-        messageInput.style.backgroundColor = '#ffebee';
-      } else {
-        badWordWarning.style.display = 'none';
-        messageInput.style.border = '';
-        messageInput.style.backgroundColor = '';
-      }
-    });
     
     messageForm.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -450,9 +497,6 @@ export function renderStudentChat() {
         // Vẫn cho phép gửi nhưng đánh dấu là không chuẩn mực
         sendMessage(selectedCourseId, message);
         messageInput.value = '';
-        badWordWarning.style.display = 'none';
-        messageInput.style.border = '';
-        messageInput.style.backgroundColor = '';
         // Focus back to input
         messageInput.focus();
       }

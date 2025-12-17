@@ -10,7 +10,13 @@ import {
 } from '../utils.js';
 
 export function renderStudentAssignments() {
+    // Kiểm tra quyền truy cập
     const currentUser = stateManager.getState().user;
+    if (!currentUser || currentUser.role !== 'student') {
+      navigateTo('/dashboard');
+      return document.createElement('div');
+    }
+    
     const courses = getFromStorage(STORAGE_KEYS.COURSES);
     const assignments = getFromStorage(STORAGE_KEYS.ASSIGNMENTS);
     const submissions = getFromStorage(STORAGE_KEYS.SUBMISSIONS);

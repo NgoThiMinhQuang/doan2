@@ -12,7 +12,13 @@ import {
 } from '../utils.js';
 
 export function renderTeacherExercises() {
+  // Kiểm tra quyền truy cập
   const currentUser = stateManager.getState().user;
+  if (!currentUser || currentUser.role !== 'teacher') {
+    navigateTo('/dashboard');
+    return document.createElement('div');
+  }
+  
   const assignments = getFromStorage(STORAGE_KEYS.ASSIGNMENTS);
   
   // Filter assignments for this teacher
